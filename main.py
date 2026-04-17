@@ -2,26 +2,15 @@ import faiss
 import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer, CrossEncoder
-from google import genai
+import ollama
 import re
 import os
-from dotenv import load_dotenv
 
 # =========================
 # CONFIGURATION
 # =========================
-# Load the hidden variables from the .env file
-load_dotenv(override=True)
-
-# Now it grabs the secret key safely without showing it!
-API_KEY = os.getenv("GEMINI_API_KEY")
-
-# Let's print just the first 10 characters to prove which key it is using
-print(f"🕵️ DEBUG: The key being used starts with: {str(API_KEY)[:10]}...")
-
-# Initialize the 2026 SDK Client
-client = genai.Client(api_key=API_KEY)
-MODEL_NAME = "gemini-2.5-flash"
+# Using the local Ollama model (Make sure you ran `ollama pull llama3` in terminal)
+OLLAMA_MODEL = "llama3.2:1b" 
 
 # =========================
 # STEP 1 & 2: DATA LOAD & CLEAN
@@ -139,7 +128,7 @@ def query_system():
 
         context = "\n---\n".join(top_chunks)
 
-        # 3. Generation with NEW Gemini SDK
+        # 3. Generation with Local Ollama
         prompt = f"""You are a professional medical assistant. Use the provided context to answer the question.
         If the answer isn't in the context, say you don't know based on the provided data.
         
@@ -152,21 +141,24 @@ def query_system():
         ANSWER:"""
 
         try:
-            # Updated call for 2026 SDK
-            response = client.models.generate_content(
-                model=MODEL_NAME,
-                contents=prompt
+            print("⏳ Generating answer with Ollama locally...")
+            response = ollama.chat(
+                model=OLLAMA_MODEL,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
             )
-            print("\n🔍 AI RESPONSE:\n", response.text)
+            print("\n🔍 AI RESPONSE:\n", response['message']['content'])
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f"❌ Error connecting to Ollama: {e}")
+            print(f"💡 Make sure the Ollama app is running on your machine and you have pulled the '{OLLAMA_MODEL}' model.")
 
 # =========================
 # MAIN EXECUTION
 # =========================
 
 if __name__ == "__main__":
-    print("--- Medical RAG System (2026) ---")
+    print("--- Medical RAG System (Local Ollama) ---")
     print("1. Build/Update Index (Run this if you added new data)")
     print("2. Ask Questions")
     choice = input("Choice: ")

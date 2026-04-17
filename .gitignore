@@ -1,1 +1,18 @@
+# Python environment and cache
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Environment variables (Secrets)
 .env
+
+# Generated Local AI Data (Large files)
+faiss_index.bin
+chunks.npy
+
+# Private Medical Data / Training Files
+data/
+train.csv
+*.pdf
