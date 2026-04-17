@@ -61,5 +61,12 @@ faiss_index.bin: Vector database for fast medical document retrieval.
 
 chunks.npy: Stored text chunks from your medical dataset.
 
+📊 The Knowledge Base
+This AI is powered by a specialized medical dataset to ensure accuracy. 
+
+* **Dataset Source:** [Medical Dataset from Kaggle]https://www.kaggle.com/datasets/thedevastator/comprehensive-medical-q-a-dataset
+* **Total Records:** ~45,000 medical Q&A pairs.
+* **Processing:** The raw `train.csv` was processed into semantic chunks and embedded using `all-MiniLM-L6-v2` for the RAG pipeline.
+
 ⚠️ Disclaimer
 Dr. Owl is an AI, not a doctor. The information provided is for educational and informational purposes only. Always consult a qualified healthcare professional for medical advice.
