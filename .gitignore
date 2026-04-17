@@ -1,20 +1,30 @@
-# Python environment and cache
-.venv/
-venv/
-env/
+# --- Python / Backend ---
 __pycache__/
 *.pyc
-
-# Environment variables (Secrets)
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
 .env
 
-# Generated Local AI Data (Large files)
-faiss_index.bin
-chunks.npy
-
-# Private Medical Data / Training Files
-data/
-train.csv
-*.pdf
-
+# --- JavaScript (React) / Frontend ---
 node_modules/
+frontend/node_modules/
+dist/
+build/
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- AI / Data Specific ---
+# Only ignore the CSV if it's too large (>100MB)
+*.csv
+
+# --- System Files ---
+.DS_Store
+Thumbs.db
