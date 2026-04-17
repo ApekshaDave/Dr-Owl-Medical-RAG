@@ -1,7 +1,14 @@
-streamlit
+# AI & Data
 faiss-cpu
 numpy
 sentence-transformers
 ollama
+
+# Backend (API)
+fastapi
+uvicorn
+python-multipart
+
+# Utilities
 pillow
 python-dotenv
