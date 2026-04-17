@@ -16,3 +16,5 @@ chunks.npy
 data/
 train.csv
 *.pdf
+
+node_modules/
