@@ -275,7 +275,7 @@ function App() {
     setInput('');
 
     try {
-      const response = await fetch('https://pookiesdfsd-dr-owl-medical-rag.hf.space', {
+      const response = await fetch('https://pookiesdfsd-dr-owl-medical-rag.hf.space/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: query }),
