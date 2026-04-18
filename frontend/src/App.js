@@ -226,7 +226,17 @@ function SourcesPanel({ sources, overallScore }) {
                 </span>
               </div>
               <div className="source-item-text">
-                <SimpleMarkdown text={src.text} />
+                <SimpleMarkdown
+                  text={
+                    (() => {
+                      try {
+                        return JSON.parse(src.text.replace(/'/g, '"')).text;
+                      } catch {
+                        return src.text;
+                      }
+                    })()
+                  }
+                />
               </div>
             </div>
           ))}
@@ -282,7 +292,7 @@ function App() {
       });
 
       const data = await response.json();
-
+      console.log(data.JSON)
       if (response.ok) {
         setChatHistory(prev => [...prev, {
           role:         'bot',
