@@ -95,7 +95,7 @@ async def chat_endpoint(request: ChatRequest):
         """
 
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-specdec", # Ultra-fast Groq model
+            model="llama-3.3-70b-versatile", # Ultra-fast Groq model
             messages=[
                 {"role": "system", "content": "You are a helpful medical assistant."},
                 {"role": "user", "content": prompt}
