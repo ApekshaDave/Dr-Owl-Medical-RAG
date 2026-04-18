@@ -69,7 +69,12 @@ async def chat_endpoint(request: ChatRequest):
             dist = float(distances[0][i])
             raw_score = max(0, min(100, int((1 - (dist / 2)) * 100)))
             
-            chunk_content = str(chunks[idx])
+            chunk_data = chunks[idx]
+            if isinstance(chunk_data, dict):
+                chunk_content = str(chunk_data.get("text", chunk_data)).strip()
+            else:
+                chunk_content = str(chunk_data).strip()
+                
             context_text += f"\n---\n{chunk_content}\n"
             
             sources.append({
