@@ -1,114 +1,117 @@
+import os
+import io
+import sys
+import numpy as np
+import faiss
+import ollama
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
-import ollama
-import numpy as np
-import faiss
 from sentence_transformers import SentenceTransformer
+from dotenv import load_dotenv
 
-app = FastAPI()
+# --- Windows Encoding Fix ---
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-# --- 1. CONFIGURATION ---
-# Note: llama3.2:1b is text-only. 
-# If you want image support later, change this to "moondream"
-MODEL_NAME = "llama3.2:1b"
+load_dotenv()
 
+app = FastAPI(title="Dr. Owl Medical AI")
+
+# --- CORS Configuration ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Change this to your frontend URL in final production
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- 2. LOAD DATABASE ---
+# --- Load Knowledge Base ---
+print("--- Loading Knowledge Base ---")
 try:
-    embed_model = SentenceTransformer('all-MiniLM-L6-v2') 
+    # Load the embedding model (Must match the one used during indexing)
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    
+    # Load FAISS index and text chunks
     index = faiss.read_index("faiss_index.bin")
     chunks = np.load("chunks.npy", allow_pickle=True)
-    print(f"✅ Medical Database Loaded: {len(chunks)} chunks ready.")
-    print(f"✅ Active Model: {MODEL_NAME}")
+    print("System Ready: Medical Data Loaded.")
 except Exception as e:
-    print(f"❌ Error loading database files: {e}")
-    index = None
+    print(f"Initialization Error: {e}")
+    sys.exit(1)
 
+# --- Data Models ---
 class ChatRequest(BaseModel):
-    question: str
-    image: Optional[str] = None # Base64 string from React
+    message: str
+
+# --- Helper Logic ---
+def get_relevance_label(score):
+    if score >= 75: return "High"
+    if score >= 45: return "Medium"
+    return "Low"
 
 @app.post("/chat")
-def chat_with_medical_ai(req: ChatRequest):
-    if index is None:
-        raise HTTPException(status_code=500, detail="Database files missing on server.")
-
+async def chat_endpoint(request: ChatRequest):
     try:
-        # --- 3. RETRIEVAL (Search) ---
-        query_vector = embed_model.encode([req.question]).astype('float32')
-        distances, indices = index.search(query_vector, k=3) # Top 3 matches
+        query = request.message
         
-        retrieved_docs = []
+        # 1. Vector Search
+        query_embedding = model.encode([query])
+        distances, indices = index.search(np.array(query_embedding).astype("float32"), k=3)
+        
+        # 2. Process Sources
+        sources = []
         context_text = ""
+        total_score = 0
         
-        for idx, dist in zip(indices[0], distances[0]):
-            if idx != -1:
-                raw_chunk = chunks[idx]
-                
-                # Critical fix: Ensure raw_chunk is converted to string correctly
-                if isinstance(raw_chunk, dict):
-                    content = str(raw_chunk.get('text', raw_chunk))
-                else:
-                    content = str(raw_chunk)
+        for i, idx in enumerate(indices[0]):
+            # Convert L2 distance to a 0-100 similarity score (approximate)
+            # Distance 0 = 100%, Distance 2+ = 0%
+            dist = float(distances[0][i])
+            raw_score = max(0, min(100, int((1 - (dist / 2)) * 100)))
+            
+            chunk_content = str(chunks[idx])
+            context_text += f"\n---\n{chunk_content}\n"
+            
+            sources.append({
+                "rank": i + 1,
+                "text": chunk_content,
+                "score": raw_score,
+                "label": get_relevance_label(raw_score),
+                "distance": f"{dist:.2f}"
+            })
+            total_score += raw_score
 
-                retrieved_docs.append({
-                    "document_name": "Medical_Dataset.csv",
-                    "score": f"{1 / (1 + dist):.2f}",
-                    "text": content
-                })
-                context_text += content + "\n\n"
+        overall_relevance = int(total_score / len(sources)) if sources else 0
 
-        # --- 4. GENERATION ---
-        system_instruction = (
-            "You are Dr. Owl, a professional medical AI assistant. "
-            "Use the provided context to answer the user's question accurately. "
-            "Be detailed and helpful. If you don't know the answer from the context, "
-            "use your general knowledge but mention that it's general info."
-        )
+        # 3. Generate AI Response with Ollama
+        prompt = f"""
+        You are Dr. Owl, a professional medical AI. Use the provided clinical context to answer the user's question.
+        If the answer isn't in the context, use your medical knowledge but note that it's general information.
         
-        user_prompt = f"CONTEXT:\n{context_text}\n\nUSER QUESTION: {req.question}"
+        Context: {context_text}
+        Question: {query}
+        
+        Instructions: Use markdown formatting. Be concise, empathetic, and professional.
+        """
 
-        # Prepare the message payload
-        message = {'role': 'user', 'content': user_prompt}
-
-        # Handle Image (Only if model supports it)
-        # Note: llama3.2:1b will likely ignore this, but it keeps your code robust.
-        if req.image:
-            # Clean base64 string if header is present
-            img_data = req.image.split(",")[-1] 
-            message['images'] = [img_data]
-
-        response = ollama.chat(model=MODEL_NAME, messages=[
-            {'role': 'system', 'content': system_instruction},
-            message
+        response = ollama.chat(model='llama3', messages=[
+            {'role': 'system', 'content': 'You are a helpful medical assistant.'},
+            {'role': 'user', 'content': prompt},
         ])
 
-        # --- 5. RESPONSE EXTRACTION ---
-        if hasattr(response, 'message'):
-            actual_answer = response.message.content
-        elif isinstance(response, dict) and 'message' in response:
-            actual_answer = response['message']['content']
-        else:
-            actual_answer = str(response)
-
+        # 4. Return structured JSON for the React Frontend
         return {
-            "answer": actual_answer,
-            "sources": retrieved_docs 
+            "answer": response['message']['content'],
+            "context": context_text,
+            "sources": sources,
+            "overall_score": overall_relevance
         }
 
     except Exception as e:
-        print(f"❌ Server Error: {e}")
+        print(f"Chat Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
-    # Running on port 8000
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

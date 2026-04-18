@@ -1,14 +1,15 @@
 # AI & Data
-faiss-cpu
-numpy
-sentence-transformers
-ollama
+groq==1.1.2
+faiss-cpu==1.13.2
+numpy==1.26.4
+sentence-transformers==5.4.1
 
 # Backend (API)
-fastapi
-uvicorn
-python-multipart
+fastapi==0.136.0
+uvicorn[standard]==0.44.0
+gunicorn==23.0.0
+python-multipart==0.0.20
 
 # Utilities
-pillow
-python-dotenv
+pillow==11.0.0
+python-dotenv==1.0.1
